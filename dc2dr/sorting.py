@@ -3,7 +3,7 @@ from tsort import tsort
 def flatten(l):
     return flatten(l[0]) + (flatten(l[1:]) if len(l) > 1 else []) if type(l) is list else [l]
 
-def sort(services):
+def sort_service(services):
     dependencies = {}
     for name, v in services.items():
         if 'links' in v or 'depends_on' in v:
