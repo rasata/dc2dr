@@ -1,6 +1,6 @@
 import yaml
+
 from dc2dr.sorting import sort_service
-import pprint
 
 
 class DockerComposeFileParser(object):
@@ -68,7 +68,7 @@ class DockerComposeFileParser(object):
 		docker_args = {'name': service_name, 'image': service_params['image']}
 		
 		service_arguments = [args for args in service_params if args in
-		                     ['depends_on', 'links', 'ports', 'expose', 'environment', 'command', 'volumes'] ]
+		                     ['depends_on', 'links', 'ports', 'expose', 'environment', 'command', 'volumes']]
 		
 		for arg in service_arguments:
 			docker_args[arg] = self.parsers[arg](service_params[arg])
