@@ -6,29 +6,53 @@ import pprint
 class DockerComposeFileParser(object):
 	
 	def __init__(self, docker_compose_path: str) -> None:
+		
 		self._dc_path = docker_compose_path
 		self._docker_file = open(self._dc_path)
 		self._dc_yaml_file = yaml.safe_load(self._docker_file)
+		self.parsers = {'depends_on': self._parse_depends_on,
+		                'links': self._parse_links,
+		                'ports': self._parse_ports,
+		                'expose': self._parse_expose,
+		                'environment': self._parse_environment,
+		                'command': self._parse_command,
+		                'volumes': self._parse_volumes}
 	
 	def get_docker_run_commands(self) -> list:
+		"""
+		Get docker run commands by parsing the docker-compose.yml file
+		:return: list of docker run commands
+		"""
+		return [self._create_docker_run_command(s) for s in self._get_list_of_services()]
+	
+	def _get_list_of_services(self) -> list:
+		"""
+		get a list of services present in the docker-compose file
+		:return:
+		"""
 		services = self._dc_yaml_file['services']
-		sorted_services = sort_service(services)
 		parsed_services = []
+		# TODO : Remove that...
+		sorted_services = sort_service(services)
 		# Get standalone containers
 		sorted_elements = [list(k)[0] for k in sorted_services]
 		for ident, params in services.items():
 			if ident not in sorted_elements:
-				parsed_services.append(parse_service(ident, params))
+				parsed_services.append(self._parse_service(ident, params))
 		# Get other containers
 		for d in sorted_services:
 			for k, v in d.items():
-				parsed_services.append(parse_service(k, v))
-		commands = []
-		for s in parsed_services:
-			commands.append(write_run_command(s))
-		return commands
+				parsed_services.append(self._parse_service(k, v))
+		return parsed_services
 	
-	def write_run_command(self, service):
+	def _create_docker_run_command(self, service: dict) -> str:
+		"""
+		Create a docker run command by reading a service dict
+		:param service: service to parse
+		:type service: dict
+		:return: the docker run command
+		:rtype: str
+		"""
 		command = ""
 		prefix = "docker run -d --name={0} ".format(service['name'])
 		command += prefix
@@ -40,110 +64,52 @@ class DockerComposeFileParser(object):
 			command += ' {0}'.format(service['command'])
 		return command
 	
-	def parse_service(self, service_name, service_params):
-		docker_args = {'name': service_name}
-		docker_args['image'] = parse_image(service_params['image'])
-		for arg in ['depends_on', 'links', 'ports', 'expose', 'environment', 'command', 'volumes']:
-			if arg in service_params:
-				docker_args[arg] = globals()['parse_' + arg](service_params[arg])
+	def _parse_service(self, service_name, service_params):
+		docker_args = {'name': service_name, 'image': service_params['image']}
+		
+		service_arguments = [args for args in service_params if args in
+		                     ['depends_on', 'links', 'ports', 'expose', 'environment', 'command', 'volumes'] ]
+		
+		for arg in service_arguments:
+			docker_args[arg] = self.parsers[arg](service_params[arg])
 		return docker_args
-
-
-def run_commands(path):
-	f = open(path)
-	y = yaml.safe_load(f)
-	return parse_compose_file(y)
-
-
-def parse_compose_file(yaml_file):
-	services = yaml_file['services']
-	sorted_services = sort_service(services)
-	parsed_services = []
-	# Get standalone containers
-	sorted_elements = [list(k)[0] for k in sorted_services]
-	for ident, params in services.items():
-		if ident not in sorted_elements:
-			parsed_services.append(parse_service(ident, params))
-	# Get other containers
-	for d in sorted_services:
-		for k, v in d.items():
-			parsed_services.append(parse_service(k, v))
 	
-	commands = []
-	for s in parsed_services:
-		commands.append(write_run_command(s))
-	return commands
-
-
-def parse_service(name, service):
-	docker_args = {'name': name}
-	docker_args['image'] = parse_image(service['image'])
-	for arg in ['depends_on', 'links', 'ports', 'expose', 'environment', 'command', 'volumes']:
-		if arg in service:
-			docker_args[arg] = globals()['parse_' + arg](service[arg])
-	return docker_args
-
-
-def write_run_command(service):
-	command = ""
-	prefix = "docker run -d --name={0} ".format(service['name'])
-	command += prefix
-	for arg in ['depends_on', 'links', 'ports', 'expose', 'environment', 'volumes']:
-		if arg in service:
-			command += service[arg]
-	command += service['image']
-	if 'command' in service:
-		command += ' {0}'.format(service['command'])
-	return command
-
-
-def parse_image(image):
-	return image
-
-
-def parse_depends_on(deps):
-	return to_docker_arg(deps, " --link={0} ")
-
-
-def parse_links(links):
-	return parse_depends_on(links)
-
-
-def parse_ports(ports):
-	return to_docker_arg(ports, " -p {0} ")
-
-
-def parse_expose(exports):
-	return to_docker_arg(exports, " --expose={0} ")
-
-
-def parse_environment(envs):
-	string = ""
-	for elt in envs:
-		if isinstance(elt, str):
-			string += ' -e {} '.format(elt)
-		if isinstance(elt, dict):
-			for k, v in envs.items():
-				string += ' -e {0}="{1}" '.format(k, v)
-	return string
-
-
-def parse_volumes(envs):
-	volumes = ""
-	for elt in envs:
-		volumes += ' -v {} '.format(elt)
-	return volumes
-
-
-def parse_command(command):
-	if type(command) is list:
-		return ' '.join(command)
-	else:
-		return command
-
-
-def to_docker_arg(args, str_format):
-	string = ""
-	for a in args:
-		string += str_format.format(a)
-	return string
+	def _parse_depends_on(self, deps):
+		return self._to_docker_arg(deps, " --link={0} ")
+	
+	def _parse_links(self, links):
+		return self._parse_depends_on(links)
+	
+	def _parse_ports(self, ports):
+		return self._to_docker_arg(ports, " -p {0} ")
+	
+	def _parse_expose(self, exports):
+		return self._to_docker_arg(exports, " --expose={0} ")
+	
+	def _parse_environment(self, envs):
+		string = ""
+		for elt in envs:
+			if isinstance(elt, str):
+				string += ' -e {} '.format(elt)
+			if isinstance(elt, dict):
+				for k, v in envs.items():
+					string += ' -e {0}="{1}" '.format(k, v)
+		return string
+	
+	def _parse_volumes(self, envs):
+		volumes = ""
+		for elt in envs:
+			volumes += ' -v {} '.format(elt)
+		return volumes
+	
+	def _parse_command(self, command):
+		if type(command) is list:
+			return ' '.join(command)
+		else:
+			return command
+	
+	def _to_docker_arg(self, args, str_format):
+		string = ""
+		for a in args:
+			string += str_format.format(a)
+		return string
