@@ -1,6 +1,6 @@
 import yaml
 from dc2dr.sorting import sort_service
-
+import pprint
 
 def run_commands(path):
     f = open(path)
@@ -11,12 +11,18 @@ def run_commands(path):
 def parse_compose_file(yaml_file):
     services = yaml_file['services']
     sorted_services = sort_service(services)
-    
     parsed_services = []
+    # Get standalone containers
+    sorted_elements = [list(k)[0] for k in sorted_services ]
+    for ident, params in services.items():
+        if ident not in sorted_elements:
+            parsed_services.append(parse_service(ident,params))
+    # Get other containers
     for d in sorted_services:
         for k, v in d.items():
             parsed_services.append(parse_service(k, v))
     
+                
     commands = []
     for s in parsed_services:
         commands.append(write_run_command(s))
