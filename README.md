@@ -35,13 +35,13 @@ python ./dc2dr/cli.py tests/example-compose.yml
 
 Or from in a python script:
 
-```
+```python
 from dc2dr import parser
 path = "path\\to\\docker_compose.yml"
-# get a list of docker run commands
-run_commands = parser.DockerComposeFileParser(path).get_docker_run_commands()
-# print commands
-for i in run_commands:
+docker_parser = parser.DockerComposeFileParser(path)
+# get a list of docker run commands and print
+
+for i in docker_parser.get_docker_run_commands():
 	print(i)
 
 ```
