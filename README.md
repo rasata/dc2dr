@@ -4,7 +4,6 @@ Convert Docker Compose to Docker Run Commands
 
 
 * Free software: MIT license
-* Documentation: https://dc2dr.readthedocs.io.
 
 
 ## Features
