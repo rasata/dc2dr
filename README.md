@@ -38,12 +38,18 @@ Or from in a python script:
 from dc2dr import parser
 path = "path\\to\\docker_compose.yml"
 docker_parser = parser.DockerComposeFileParser(path)
-# get a list of docker run commands and print
 
+
+# You can pass an .env file to change environment vars on the fly
+path_to_envi = "path\\to\\.env"
+docker_parser = parser.DockerComposeFileParser(path, path_to_envi)
+
+# get the docker run commands in a list and print them
 for i in docker_parser.get_docker_run_commands():
 	print(i)
-
 ```
+
+
 
 ## Credits
 
