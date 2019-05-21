@@ -23,11 +23,12 @@ The supported docker-compose keys are:
   
 Added by Xavier Malet
   - `volumes`
+  - `.env files`
   
 ## Usage (from original doc)
 
 From this dir you can run:
-
+- _TODO: add possibility to pass `.env` files_
 ```commandline
 python ./dc2dr/cli.py tests/example-compose.yml
 ```
